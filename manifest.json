@@ -8,7 +8,7 @@
   "description": "Hi-Tech real-time squad availability calendar with neon color profiles.",
   "icons": [
     {
-      "src": "[https://cloudball.github.io/SyncUs/icon-512.png](https://cloudball.github.io/SyncUs/icon-512.png)",
+      "src": "https://raw.githubusercontent.com/cloudball/SyncUs/main/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
