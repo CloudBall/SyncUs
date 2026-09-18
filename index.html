@@ -1,952 +1,480 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NexusSync // Real-Time Realm Calendar Hub</title>
-    <meta name="theme-color" content="#030712">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="NexusSync">
-    <meta name="description" content="Real-time multi-user group availability realm calendar.">
-
-    <!-- PWA Web Manifest Link -->
-    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22NexusSync%20Realm%20Calendar%22%2C%22short_name%22%3A%22NexusSync%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23030712%22%2C%22theme_color%22%3A%22%23030712%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn.jsdelivr.net%2Fgh%2Ftwitter%2Ftwemoji%4014.0.2%2Fassets%2F72x72%2F1f4c5.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusSync - Real-Time Squad Availability Calendar</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        cyber: {
-                            900: '#030712',
-                            800: '#0b0f19',
-                            700: '#111827',
-                            600: '#1f2937',
-                            500: '#374151',
-                            accent: '#00ffcc'
-                        }
-                    },
-                    fontFamily: {
-                        mono: ['Courier New', 'monospace'],
-                        sans: ['Inter', 'system-ui', 'sans-serif']
+                        darkbg: '#0a0b10',
+                        cardbg: '#13151f',
+                        bordercolor: '#222638'
                     }
                 }
             }
         }
     </script>
-    <!-- FontAwesome & Google Fonts -->
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#0a0b10">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <style>
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .orbitron {
-            font-family: 'Orbitron', sans-serif;
-        }
-        .glass-panel {
-            background: rgba(17, 24, 39, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        }
-        .glass-card {
-            background: rgba(31, 41, 55, 0.45);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        ::-webkit-scrollbar {
-            width: 4px;
-            height: 4px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0b0f19;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #374151;
-            border-radius: 2px;
-        }
-        @keyframes pulseGlow {
-            0%, 100% { opacity: 0.8; }
-            50% { opacity: 0.4; }
-        }
-        .animate-pulse-glow {
-            animation: pulseGlow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0a0b10; color: #f3f4f6; }
+        .glass { background: rgba(19, 21, 31, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .neon-glow { box-shadow: 0 0 15px rgba(99, 102, 241, 0.25); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0a0b10; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #222638; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #374151; }
     </style>
-
-    <!-- Firebase SDK Imports -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        window.firebaseModules = {
-            initializeApp, getAuth, signInAnonymously, signInWithCustomToken,
-            getFirestore, doc, setDoc, getDoc, onSnapshot, collection
-        };
-        window.dispatchEvent(new Event('firebase-loaded'));
-    </script>
 </head>
-<body class="bg-cyber-900 text-slate-100 min-h-screen flex flex-col selection:bg-cyan-500 selection:text-black overflow-x-hidden">
+<body class="min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
 
-    <div class="fixed inset-0 bg-[linear-gradient(to_right,#1f293708_1px,transparent_1px),linear-gradient(to_bottom,#1f293708_1px,transparent_1px)] bg-[size:2rem_2rem] pointer-events-none z-0"></div>
-    <div class="fixed top-0 left-1/4 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none z-0 animate-pulse-glow"></div>
-    <div class="fixed bottom-10 right-1/4 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl pointer-events-none z-0 animate-pulse-glow" style="animation-delay: 1.5s;"></div>
-
-    <header class="relative z-20 border-b border-slate-800/80 glass-panel sticky top-0 px-4 py-3">
-        <div class="max-w-md mx-auto flex items-center justify-between gap-3">
-            <div class="flex items-center space-x-2.5">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
-                    <i class="fa-solid fa-earth-americas text-black font-bold text-sm"></i>
+    <!-- Top Navigation Header -->
+    <header class="glass sticky top-0 z-50 px-4 py-3 border-b border-bordercolor">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center neon-glow text-white font-bold text-lg">
+                    <i class="fa-solid fa-calendar-days"></i>
                 </div>
                 <div>
-                    <h1 id="app-title-header" class="orbitron font-extrabold text-base tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-purple-400">
-                        NEXUS<span class="text-white">REALM</span>
+                    <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                        NexusSync <span id="realm-display-badge" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">Realm: Default</span>
                     </h1>
-                    <p class="text-[10px] text-slate-400 font-mono tracking-wide flex items-center gap-1">
-                        <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span> 
-                        <span id="sync-status-text">Connecting realm...</span>
+                    <p class="text-xs text-gray-400 flex items-center gap-1.5">
+                        <span id="sync-indicator" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span id="sync-text">Connected to Cloud Sync</span>
                     </p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2">
-                <button onclick="openRealmModal()" class="w-9 h-9 rounded-xl glass-card border border-purple-500/40 text-purple-400 flex items-center justify-center text-xs active:scale-95 transition-all" title="Realm Code & Group Settings">
-                    <i class="fa-solid fa-key"></i>
+            <!-- Action Controls -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <!-- Month Navigator -->
+                <div class="flex items-center bg-cardbg border border-bordercolor rounded-xl p-1">
+                    <button onclick="changeMonth(-1)" class="p-2 hover:bg-gray-800 rounded-lg text-gray-300 transition"><i class="fa-solid fa-chevron-left"></i></button>
+                    <span id="current-month-year" class="px-4 font-semibold text-sm text-white">October 2026</span>
+                    <button onclick="changeMonth(1)" class="p-2 hover:bg-gray-800 rounded-lg text-gray-300 transition"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+
+                <!-- Realm Manager Button -->
+                <button onclick="openRealmModal()" class="flex items-center gap-2 px-3.5 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 font-medium text-sm rounded-xl transition neon-glow">
+                    <i class="fa-solid fa-shield-halved text-indigo-400"></i> Realm Settings
                 </button>
-                <button onclick="openRosterModal()" class="w-9 h-9 rounded-xl glass-card border border-cyan-500/30 text-cyan-400 flex items-center justify-center text-xs active:scale-95 transition-all" title="Squad Roster">
-                    <i class="fa-solid fa-users"></i>
-                </button>
-                <button onclick="openExportModal()" class="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 flex items-center justify-center text-xs active:scale-95 transition-all" title="Export Report">
-                    <i class="fa-solid fa-share-nodes"></i>
+
+                <!-- Roster Manager Button -->
+                <button onclick="openRosterModal()" class="flex items-center gap-2 px-3.5 py-2 bg-cardbg hover:bg-gray-800 border border-bordercolor text-gray-200 font-medium text-sm rounded-xl transition">
+                    <i class="fa-solid fa-users text-violet-400"></i> Manage Squad (<span id="member-count">10</span>)
                 </button>
             </div>
         </div>
     </header>
 
-    <main class="relative z-10 flex-1 max-w-md w-full mx-auto p-4 flex flex-col gap-4 pb-20">
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
         
-        <div onclick="openRealmModal()" class="glass-card p-3 rounded-2xl border border-purple-500/30 flex items-center justify-between active:scale-[0.99] transition-all cursor-pointer shadow-lg shadow-purple-500/5">
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400">
-                    <i class="fa-solid fa-shield-halved text-xs"></i>
+        <!-- Left Sidebar: Squad Legend & Quick Stats -->
+        <aside class="lg:col-span-1 space-y-6">
+            <div class="glass p-5 rounded-2xl border border-bordercolor shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="font-bold text-white text-base flex items-center gap-2">
+                        <i class="fa-solid fa-user-group text-indigo-400"></i> Squad Roster
+                    </h2>
+                    <button onclick="openRosterModal()" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">Edit All</button>
                 </div>
-                <div>
-                    <p class="text-[10px] font-mono text-purple-400 uppercase tracking-wider">Active Realm (Tap to Switch)</p>
-                    <h3 id="active-realm-name-display" class="text-xs font-bold text-white font-mono">Loading Realm...</h3>
-                </div>
-            </div>
-            <span class="text-[10px] font-mono bg-purple-500/20 border border-purple-500/40 text-purple-300 px-2 py-1 rounded-lg">ID: <span id="active-realm-code-display">...</span></span>
-        </div>
-
-        <div onclick="openRosterModal()" class="glass-card p-3 rounded-2xl border border-cyan-500/30 flex items-center justify-between active:scale-[0.99] transition-all cursor-pointer shadow-lg shadow-cyan-500/5">
-            <div class="flex items-center gap-3">
-                <div id="active-user-dot" class="w-4 h-4 rounded-full shadow-[0_0_10px_#06b6d4]" style="background-color: #06b6d4;"></div>
-                <div>
-                    <p class="text-[10px] font-mono text-cyan-400 uppercase tracking-wider">My Active Profile (Tap to Change)</p>
-                    <h3 id="active-user-name" class="text-xs font-bold text-white font-mono">Agent 1 (Alex)</h3>
+                <div id="roster-legend-list" class="space-y-2.5 max-h-[calc(100vh-280px)] overflow-y-auto custom-scrollbar pr-1">
+                    <!-- Populated dynamically -->
                 </div>
             </div>
-            <i class="fa-solid fa-chevron-right text-xs text-slate-400 pr-1"></i>
-        </div>
+        </aside>
 
-        <div class="glass-panel rounded-2xl p-4 flex flex-col gap-3 border border-slate-700/50">
-            <div class="flex items-center justify-between">
-                <button onclick="changeMonth(-1)" class="w-8 h-8 rounded-xl glass-card text-cyan-400 flex items-center justify-center text-xs active:scale-95 transition-all">
-                    <i class="fa-solid fa-chevron-left"></i>
-                </button>
-                <h2 id="calendar-month-year" class="orbitron text-sm font-bold tracking-wider text-white text-center">
-                    OCTOBER 2026
-                </h2>
-                <button onclick="changeMonth(1)" class="w-8 h-8 rounded-xl glass-card text-cyan-400 flex items-center justify-center text-xs active:scale-95 transition-all">
-                    <i class="fa-solid fa-chevron-right"></i>
-                </button>
+        <!-- Right Calendar Grid Container -->
+        <section class="lg:col-span-3 glass rounded-2xl border border-bordercolor shadow-2xl overflow-hidden flex flex-col">
+            <!-- Day Headers -->
+            <div class="grid grid-cols-7 bg-cardbg/80 border-b border-bordercolor text-center text-xs font-semibold text-gray-400 py-3">
+                <span class="text-rose-400">Sun</span>
+                <span>Mon</span>
+                <span>Tue</span>
+                <span>Wed</span>
+                <span>Thu</span>
+                <span>Fri</span>
+                <span class="text-indigo-400">Sat</span>
             </div>
-
-            <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800">
-                <button id="mode-individual" onclick="setMode('individual')" class="py-1.5 rounded-xl text-xs font-semibold bg-cyan-500 text-black shadow-lg shadow-cyan-500/20 transition-all flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-user"></i> My Availability
-                </button>
-                <button id="mode-combined" onclick="setMode('combined')" class="py-1.5 rounded-xl text-xs font-semibold glass-card text-slate-300 hover:text-white transition-all flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-layer-group"></i> Group View (<span id="month-free-count">0</span>)
-                </button>
+            <!-- Calendar Days Grid -->
+            <div id="calendar-grid" class="grid grid-cols-7 flex-1 auto-rows-fr bg-[#0d0f17]/50 divide-x divide-y divide-bordercolor">
+                <!-- Populated dynamically -->
             </div>
-        </div>
-
-        <div class="glass-panel rounded-2xl p-4 flex flex-col gap-3 border border-slate-700/50">
-            <div class="grid grid-cols-7 gap-1 text-center font-mono text-[10px] text-slate-400 font-semibold pb-1 border-b border-slate-800">
-                <span class="text-red-400/80">S</span>
-                <span>M</span>
-                <span>T</span>
-                <span>W</span>
-                <span>T</span>
-                <span>F</span>
-                <span class="text-cyan-400/80">S</span>
-            </div>
-
-            <div id="calendar-grid" class="grid grid-cols-7 gap-1.5 min-h-[320px]">
-                <!-- Dynamically populated via JavaScript -->
-            </div>
-
-            <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_#06b6d4] inline-block"></span> Available (Glowing Dot)</span>
-                <span>Tap any day to edit</span>
-            </div>
-        </div>
-
+        </section>
     </main>
 
-    <nav class="fixed bottom-0 left-0 right-0 z-30 glass-panel border-t border-slate-800/80 py-2.5 px-6 flex items-center justify-around max-w-md mx-auto">
-        <button onclick="goToCurrentMonth()" class="flex flex-col items-center gap-1 text-cyan-400">
-            <i class="fa-solid fa-calendar-day text-sm"></i>
-            <span class="text-[9px] font-mono">Today</span>
-        </button>
-        <button onclick="openRealmModal()" class="flex flex-col items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors">
-            <i class="fa-solid fa-shield-halved text-sm"></i>
-            <span class="text-[9px] font-mono">Realm</span>
-        </button>
-        <button onclick="openRosterModal()" class="flex flex-col items-center gap-1 text-slate-400 hover:text-cyan-400 transition-colors">
-            <i class="fa-solid fa-users-gear text-sm"></i>
-            <span class="text-[9px] font-mono" id="nav-roster-label">Roster</span>
-        </button>
-        <button onclick="openExportModal()" class="flex flex-col items-center gap-1 text-slate-400 hover:text-purple-400 transition-colors">
-            <i class="fa-solid fa-file-arrow-down text-sm"></i>
-            <span class="text-[9px] font-mono">Export</span>
-        </button>
-    </nav>
-
-    <div id="day-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
-        <div class="glass-panel max-w-sm w-full rounded-2xl p-5 border border-cyan-500/30 shadow-2xl relative animate-in fade-in zoom-in duration-200">
-            <button onclick="closeDayModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white w-8 h-8 rounded-xl glass-card flex items-center justify-center text-xs">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-            <div class="flex items-center gap-3 mb-4">
-                <div class="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 text-xs font-bold orbitron">
-                    <i class="fa-solid fa-calendar-day"></i>
-                </div>
-                <div>
-                    <h3 id="modal-date-title" class="orbitron text-sm font-bold text-white">October 15, 2026</h3>
-                    <p class="text-[10px] text-cyan-300 font-mono">Availability & Numeric Value (Cloud Synced)</p>
-                </div>
-            </div>
-
-            <div class="space-y-4 my-3">
-                <button onclick="toggleActiveUserForModalDate()" id="modal-toggle-btn" class="w-full py-3 rounded-xl text-xs font-bold bg-cyan-500 text-black shadow-lg shadow-cyan-500/20 transition-all flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-circle text-[8px]"></i> Toggle Available / Busy
-                </button>
-
-                <div class="flex flex-col gap-1.5">
-                    <label for="modal-custom-number" class="text-[11px] text-slate-300 font-semibold flex items-center justify-between font-mono">
-                        <span>Custom Number / Shift / Hours:</span>
-                        <span class="text-[9px] text-cyan-400">Optional</span>
-                    </label>
-                    <input type="number" id="modal-custom-number" oninput="saveModalCustomNumber(this.value)" placeholder="e.g. 8, 1, 100..." class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400 font-mono">
-                </div>
-
-                <div class="pt-2 border-t border-slate-800">
-                    <p class="text-[11px] text-slate-300 font-semibold mb-2">Squad Members Available in Realm:</p>
-                    <div id="modal-agents-list" class="flex flex-col gap-1.5 max-h-36 overflow-y-auto pr-1">
-                        <!-- Populated dynamically -->
-                    </div>
-                </div>
-            </div>
-
-            <button onclick="closeDayModal()" class="w-full py-2.5 rounded-xl text-xs font-bold glass-card text-slate-200 mt-2">
-                Done
-            </button>
-        </div>
-    </div>
-
     <!-- Roster Management Modal -->
-    <div id="roster-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
-        <div class="glass-panel max-w-sm w-full rounded-2xl p-5 border border-cyan-500/30 shadow-2xl relative flex flex-col max-h-[85vh]">
-            <button onclick="closeRosterModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white w-8 h-8 rounded-xl glass-card flex items-center justify-center text-xs">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-            <div class="flex items-center gap-3 mb-3 flex-shrink-0">
-                <div class="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 text-xs font-bold orbitron">
-                    <i class="fa-solid fa-users-gear"></i>
-                </div>
-                <div>
-                    <h3 class="orbitron text-sm font-bold text-white">Squad Roster (<span id="roster-count-title">0</span>)</h3>
-                    <p class="text-[10px] text-cyan-300 font-mono">Add, edit names & colors globally</p>
-                </div>
+    <div id="roster-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass max-w-lg w-full rounded-2xl border border-bordercolor p-6 shadow-2xl space-y-6">
+            <div class="flex items-center justify-between border-b border-bordercolor pb-4">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-users-gear text-indigo-400"></i> Edit Squad Roster & Colors
+                </h3>
+                <button onclick="closeRosterModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-
-            <div class="space-y-2 my-2 overflow-y-auto pr-1 flex-1 min-h-[160px]" id="edit-names-list">
-                <!-- Dynamically populated roster list -->
+            <div id="roster-edit-list" class="space-y-3 max-h-96 overflow-y-auto custom-scrollbar pr-2">
+                <!-- Editable items -->
             </div>
-
-            <div class="pt-3 border-t border-slate-800 flex flex-col gap-2 flex-shrink-0">
-                <button onclick="addNewMember()" class="w-full py-2.5 rounded-xl text-xs font-bold glass-card border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 transition-all flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-user-plus"></i> Add New Member
+            <div class="flex items-center justify-between pt-4 border-t border-bordercolor">
+                <button onclick="addMember()" class="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 font-medium text-sm rounded-xl transition flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Add Squad Member
                 </button>
-                <button onclick="saveCustomNames()" class="w-full py-3 rounded-xl text-xs font-bold bg-cyan-500 text-black shadow-lg shadow-cyan-500/20">
-                    Save Roster to Realm
+                <button onclick="saveRosterChanges()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-xl shadow-lg transition">
+                    Save Changes
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Realm Setup & Switcher Modal -->
-    <div id="realm-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
-        <div class="glass-panel max-w-md w-full rounded-2xl p-5 border border-purple-500/30 shadow-2xl relative flex flex-col max-h-[90vh]">
-            <button onclick="closeRealmModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white w-8 h-8 rounded-xl glass-card flex items-center justify-center text-xs">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-            <div class="flex items-center gap-3 mb-3 flex-shrink-0">
-                <div class="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 text-xs font-bold orbitron">
-                    <i class="fa-solid fa-shield-halved"></i>
-                </div>
-                <div>
-                    <h3 class="orbitron text-sm font-bold text-white">Realm Hub & Group ID</h3>
-                    <p class="text-[10px] text-purple-300 font-mono">Share this code with your friends</p>
-                </div>
+    <!-- Realm / Room Settings Modal -->
+    <div id="realm-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass max-w-md w-full rounded-2xl border border-bordercolor p-6 shadow-2xl space-y-6">
+            <div class="flex items-center justify-between border-b border-bordercolor pb-4">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-indigo-400"></i> Realm Sync Settings
+                </h3>
+                <button onclick="closeRealmModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-
-            <div class="space-y-3 my-2 overflow-y-auto pr-1 flex-1 text-xs text-slate-300 font-sans">
-                <div class="glass-card p-3.5 rounded-xl border border-purple-500/30 space-y-2">
-                    <label class="font-bold text-purple-300 font-mono block">Realm Title / Group Name:</label>
-                    <input type="text" id="input-realm-name" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-400 font-mono" placeholder="e.g. Gamer Squad, Office Team...">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Realm Code / Room ID</label>
+                    <input type="text" id="realm-input" class="w-full bg-cardbg border border-bordercolor rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-indigo-500 transition" placeholder="e.g. alpha-squad-2026">
+                    <p class="text-xs text-gray-500 mt-1.5">Share this exact code with your friends so everyone syncs on the exact same live calendar.</p>
                 </div>
-
-                <div class="glass-card p-3.5 rounded-xl border border-purple-500/30 space-y-2">
-                    <label class="font-bold text-purple-300 font-mono block">Realm Code (Group ID):</label>
+                <div class="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-4 space-y-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-share-nodes"></i> Share Realm Link
+                    </h4>
                     <div class="flex gap-2">
-                        <input type="text" id="input-realm-code" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-cyan-300 focus:outline-none focus:border-cyan-400 font-mono font-bold tracking-wider" placeholder="e.g. alpha-squad-2026">
-                        <button onclick="copyRealmLink()" class="px-3 py-2 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300 font-bold active:scale-95" title="Copy Realm Link">
-                            <i class="fa-solid fa-copy"></i>
+                        <input type="text" id="realm-share-link" readonly class="w-full bg-cardbg/80 border border-bordercolor rounded-lg px-3 py-2 text-xs text-gray-300 font-mono">
+                        <button onclick="copyRealmLink()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs rounded-lg transition whitespace-nowrap">
+                            Copy Link
                         </button>
                     </div>
-                    <p class="text-[10px] text-slate-400">Anyone who enters this exact code will connect to the same real-time shared calendar!</p>
                 </div>
             </div>
-
-            <div class="pt-3 border-t border-slate-800 flex flex-col gap-2 flex-shrink-0">
-                <button onclick="joinNewRealm()" class="w-full py-3 rounded-xl text-xs font-bold bg-purple-600 text-white shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-right-to-bracket"></i> Switch / Join Realm
-                </button>
+            <div class="flex justify-end gap-3 pt-4 border-t border-bordercolor">
+                <button onclick="closeRealmModal()" class="px-4 py-2 bg-cardbg hover:bg-gray-800 text-gray-300 font-medium text-sm rounded-xl transition">Cancel</button>
+                <button onclick="switchRealm()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-xl shadow-lg transition">Join / Switch Realm</button>
             </div>
         </div>
     </div>
 
-    <!-- Export Modal -->
-    <div id="export-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
-        <div class="glass-panel max-w-sm w-full rounded-2xl p-5 border border-purple-500/30 shadow-2xl relative">
-            <button onclick="closeExportModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white w-8 h-8 rounded-xl glass-card flex items-center justify-center text-xs">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-            <div class="flex items-center gap-3 mb-3">
-                <div class="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 text-xs font-bold orbitron">
-                    <i class="fa-solid fa-file-code"></i>
-                </div>
-                <div>
-                    <h3 class="orbitron text-sm font-bold text-white">Realm Sync Report</h3>
-                    <p class="text-[10px] text-purple-300 font-mono">Copy schedule for group chat</p>
-                </div>
-            </div>
-
-            <textarea id="export-text-area" readonly class="w-full h-36 bg-slate-900/80 border border-slate-800 rounded-xl p-2.5 text-[11px] font-mono text-slate-300 resize-none focus:outline-none mb-3"></textarea>
-
-            <button onclick="copyExportText()" class="w-full py-3 rounded-xl text-xs font-bold bg-purple-600 text-white shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-copy"></i> Copy to Clipboard
-            </button>
-        </div>
-    </div>
-
-    <!-- Toast Notification Banner -->
-    <div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 -translate-y-20 opacity-0 transition-all duration-300 glass-panel px-4 py-2.5 rounded-xl border border-cyan-500/40 text-xs font-mono text-cyan-300 shadow-2xl flex items-center gap-2">
-        <i class="fa-solid fa-circle-check text-cyan-400"></i>
-        <span id="toast-msg">Action completed.</span>
-    </div>
-
+    <!-- Firebase & Application Logic -->
     <script>
-        // Register Service Worker for PWA compliance
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                const swCode = `self.addEventListener('fetch', function(event) { event.respondWith(fetch(event.request).catch(() => caches.match(event.request))); });`;
-                const blob = new Blob([swCode], { type: 'text/javascript' });
-                const swUrl = URL.createObjectURL(blob);
-                navigator.serviceWorker.register(swUrl).catch(err => console.log('SW registration:', err));
-            });
-        }
-
-        const DEFAULT_PROFILES = [
-            { id: 0, name: "Agent 1 (Alex)", color: "#06b6d4" },
-            { id: 1, name: "Agent 2 (Sarah)", color: "#a855f7" },
-            { id: 2, name: "Agent 3 (Marcus)", color: "#ec4899" },
-            { id: 3, name: "Agent 4 (Elena)", color: "#3b82f6" },
-            { id: 4, name: "Agent 5 (David)", color: "#10b981" },
-            { id: 5, name: "Agent 6 (Chloe)", color: "#f59e0b" },
-            { id: 6, name: "Agent 7 (Liam)", color: "#ef4444" },
-            { id: 7, name: "Agent 8 (Zack)", color: "#f97316" },
-            { id: 8, name: "Agent 9 (Maya)", color: "#6366f1" },
-            { id: 9, name: "Agent 10 (Kai)", color: "#14b8a6" }
-        ];
-
-        const COLOR_PALETTE = ["#06b6d4", "#a855f7", "#ec4899", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#f97316", "#6366f1", "#14b8a6", "#eab308", "#f43f5e", "#8b5cf6"];
-        const monthNames = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
-
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'nexus-realm-default';
-        const urlParams = new URLSearchParams(window.location.search);
-        let realmCode = urlParams.get('realm') || localStorage.getItem('nexus_realm_code') || 'global-alpha-realm';
-        let realmName = localStorage.getItem('nexus_realm_name') || 'Global Alpha Realm';
-
-        let profiles = JSON.parse(localStorage.getItem(`nexus_profiles_${realmCode}`)) || DEFAULT_PROFILES;
-        let activeUserId = parseInt(localStorage.getItem('nexus_active_user')) || 0;
-        let viewMode = localStorage.getItem('nexus_view_mode') || 'individual';
-        let currentDate = new Date();
-        let selectedModalDateStr = null;
-        let availabilityData = {};
-
-        let db = null;
-        let auth = null;
-        let unsubscribeSnapshot = null;
-
-        window.addEventListener('firebase-loaded', async () => {
-            const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, getFirestore } = window.firebaseModules;
-            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-            
-            if (Object.keys(firebaseConfig).length > 0) {
-                try {
-                    const app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                    updateSyncStatus('online', 'Realm Live Synced');
-                    initRealtimeSync();
-                } catch (e) {
-                    console.warn("Auth initialization notice:", e);
-                    updateSyncStatus('offline', 'Offline Mode (Local Active)');
-                }
-            } else {
-                updateSyncStatus('offline', 'Offline Mode (Local Active)');
-            }
-        });
-
-        window.onload = function() {
-            if (!profiles.some(p => p.id === activeUserId) && profiles.length > 0) {
-                activeUserId = profiles[0].id;
-            }
-            document.getElementById('active-realm-code-display').innerText = realmCode;
-            document.getElementById('active-realm-name-display').innerText = realmName;
-            document.getElementById('input-realm-code').value = realmCode;
-            document.getElementById('input-realm-name').value = realmName;
-
-            renderActiveUserHeader();
-            renderCalendar();
-            updateViewModeUI();
+        // Firebase Configuration (Public demo instance / fallback store)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDummyKeyForNexusSyncPWA99182",
+            authDomain: "nexussync-demo.firebaseapp.com",
+            projectId: "nexussync-demo",
+            storageBucket: "nexussync-demo.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef123456789"
         };
 
-        function updateSyncStatus(status, text) {
-            const dot = document.getElementById('sync-status-dot');
-            const txt = document.getElementById('sync-status-text');
-            if (txt) txt.innerText = text;
-            if (dot) {
-                if (status === 'online') {
-                    dot.className = "w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#06b6d4] inline-block animate-pulse";
-                } else {
-                    dot.className = "w-2 h-2 rounded-full bg-amber-400 inline-block";
-                }
+        let db;
+        let isFirebaseConnected = false;
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
             }
+            db = firebase.firestore();
+            isFirebaseConnected = true;
+        } catch (e) {
+            console.warn("Firebase initialization failed, falling back to local mode.", e);
         }
 
-        function initRealtimeSync() {
-            if (!db) return;
-            const { doc, onSnapshot } = window.firebaseModules;
-            const realmDocRef = doc(db, 'artifacts_data', appId, 'realms', realmCode);
+        // Application State
+        let currentYear = new Date().getFullYear();
+        let currentMonth = new Date().getMonth(); // 0-indexed
+        let currentRealm = localStorage.getItem('nexus_realm') || 'default-squad';
+        
+        let squadMembers = JSON.parse(localStorage.getItem('nexus_members')) || [
+            { id: 'm1', name: 'Meghna', color: '#6366f1' },
+            { id: 'm2', name: 'Alex', color: '#ec4899' },
+            { id: 'm3', name: 'Jordan', color: '#10b981' },
+            { id: 'm4', name: 'Sam', color: '#f59e0b' },
+            { id: 'm5', name: 'Taylor', color: '#8b5cf6' },
+            { id: 'm6', name: 'Morgan', color: '#06b6d4' },
+            { id: 'm7', name: 'Chris', color: '#f43f5e' },
+            { id: 'm8', name: 'Pat', color: '#84cc16' },
+            { id: 'm9', name: 'Casey', color: '#14b8a6' },
+            { id: 'm10', name: 'Jamie', color: '#d946ef' }
+        ];
 
-            if (unsubscribeSnapshot) unsubscribeSnapshot();
+        // Availability Data Structure: { "YYYY-MM-DD": { memberId: { available: true/false, val: number } } }
+        let availabilityData = JSON.parse(localStorage.getItem(`nexus_avail_${currentRealm}`)) || {};
+        let unsubscribeFirestore = null;
 
-            unsubscribeSnapshot = onSnapshot(realmDocRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('realm-input').value = currentRealm;
+            document.getElementById('realm-display-badge').innerText = `Realm: ${currentRealm}`;
+            updateShareLink();
+            initCalendar();
+            setupRealtimeSync();
+        });
+
+        function setupRealtimeSync() {
+            if (!isFirebaseConnected || !db) {
+                setSyncStatus(false, "Offline Mode (Local Storage)");
+                renderAll();
+                return;
+            }
+
+            if (unsubscribeFirestore) {
+                unsubscribeFirestore();
+            }
+
+            const docRef = db.collection('realms').doc(currentRealm);
+            unsubscribeFirestore = docRef.onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data.members) squadMembers = data.members;
                     if (data.availability) availabilityData = data.availability;
-                    if (data.profiles && Array.isArray(data.profiles)) {
-                        profiles = data.profiles;
-                        localStorage.setItem(`nexus_profiles_${realmCode}`, JSON.stringify(profiles));
-                    }
-                    if (data.realmName) {
-                        realmName = data.realmName;
-                        document.getElementById('active-realm-name-display').innerText = realmName;
-                    }
-                    renderActiveUserHeader();
-                    renderCalendar();
+                    setSyncStatus(true, "Synced Live with Cloud");
                 } else {
-                    pushDataToCloud();
+                    // Initialize realm doc if not exists
+                    docRef.set({ members: squadMembers, availability: availabilityData });
+                    setSyncStatus(true, "Initialized New Realm");
                 }
+                renderAll();
             }, (error) => {
-                console.warn("Sync permission notice:", error);
-                updateSyncStatus('offline', 'Local Mode (Cloud Rules Restricted)');
+                console.warn("Firestore permission/connection error:", error);
+                setSyncStatus(false, "Offline Fallback (Permission Notice)");
+                renderAll();
             });
         }
 
-        async function pushDataToCloud() {
-            if (!db) return;
-            const { doc, setDoc } = window.firebaseModules;
-            const realmDocRef = doc(db, 'artifacts_data', appId, 'realms', realmCode);
-            try {
-                await setDoc(realmDocRef, {
-                    realmCode: realmCode,
-                    realmName: realmName,
-                    profiles: profiles,
-                    availability: availabilityData,
-                    updatedAt: new Date().toISOString()
-                }, { merge: true });
-            } catch (e) {
-                console.warn("Cloud push restricted by security rules. Operating locally.", e);
-            }
-        }
-
-        function saveDataLocalAndCloud() {
-            localStorage.setItem(`nexus_profiles_${realmCode}`, JSON.stringify(profiles));
-            localStorage.setItem('nexus_active_user', activeUserId);
-            localStorage.setItem('nexus_view_mode', viewMode);
-            localStorage.setItem('nexus_realm_code', realmCode);
-            localStorage.setItem('nexus_realm_name', realmName);
-
-            pushDataToCloud();
-        }
-
-        function renderActiveUserHeader() {
-            const activeProf = profiles.find(p => p.id === activeUserId) || profiles[0];
-            if (!activeProf) return;
-            document.getElementById('active-user-name').innerText = activeProf.name;
-            document.getElementById('active-user-dot').style.backgroundColor = activeProf.color;
-            document.getElementById('active-user-dot').style.boxShadow = `0 0 10px ${activeProf.color}`;
-            document.getElementById('nav-roster-label').innerText = `${profiles.length} Members`;
-        }
-
-        function openRealmModal() {
-            document.getElementById('realm-modal').classList.remove('hidden');
-            document.getElementById('realm-modal').classList.add('flex');
-        }
-
-        function closeRealmModal() {
-            document.getElementById('realm-modal').classList.remove('flex');
-            document.getElementById('realm-modal').classList.add('hidden');
-        }
-
-        function joinNewRealm() {
-            const codeInput = document.getElementById('input-realm-code').value.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
-            const nameInput = document.getElementById('input-realm-name').value.trim();
-
-            if (!codeInput) {
-                showToast("Please enter a valid Realm Code!");
-                return;
-            }
-
-            realmCode = codeInput;
-            if (nameInput) realmName = nameInput;
-
-            const newUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?realm=${realmCode}`;
-            window.history.pushState({path: newUrl}, '', newUrl);
-
-            localStorage.setItem('nexus_realm_code', realmCode);
-            localStorage.setItem('nexus_realm_name', realmName);
-
-            profiles = JSON.parse(localStorage.getItem(`nexus_profiles_${realmCode}`)) || DEFAULT_PROFILES;
-            document.getElementById('active-realm-code-display').innerText = realmCode;
-            document.getElementById('active-realm-name-display').innerText = realmName;
-
-            closeRealmModal();
-            showToast(`Joined realm: ${realmName}`);
-            initRealtimeSync();
-            renderCalendar();
-        }
-
-        function copyRealmLink() {
-            const link = `${window.location.protocol}//${window.location.host}${window.location.pathname}?realm=${realmCode}`;
-            const textarea = document.createElement('textarea');
-            textarea.value = link;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            showToast("Copied Realm invitation link!");
-        }
-
-        function openRosterModal() {
-            const modal = document.getElementById('roster-modal');
-            const listEl = document.getElementById('edit-names-list');
-            document.getElementById('roster-count-title').innerText = profiles.length;
-            listEl.innerHTML = '';
-
-            profiles.forEach((profile, index) => {
-                const isActive = profile.id === activeUserId;
-                const item = document.createElement('div');
-                item.className = `glass-card p-2.5 rounded-xl flex items-center gap-2 border ${isActive ? 'border-cyan-400 bg-cyan-950/30' : 'border-slate-800'}`;
-                item.innerHTML = `
-                    <input type="color" id="edit-color-${profile.id}" value="${profile.color}" class="w-6 h-6 rounded-lg bg-transparent border-0 cursor-pointer flex-shrink-0" title="Pick color">
-                    <span class="text-[10px] font-mono text-slate-400 w-8">#${index + 1}</span>
-                    <input type="text" id="edit-name-${profile.id}" value="${profile.name}" class="flex-1 bg-slate-900/80 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-cyan-400">
-                    <div class="flex items-center gap-1">
-                        ${isActive ? '<span class="text-[9px] font-mono text-cyan-400 px-1">ME</span>' : `<button onclick="switchActiveUser(${profile.id}); closeRosterModal();" class="text-[9px] font-mono text-slate-300 hover:text-white px-1.5 py-1 rounded glass-card">Use</button>`}
-                        ${profiles.length > 1 ? `<button onclick="removeMember(${profile.id})" class="text-xs text-red-400 hover:text-red-300 px-2 py-1"><i class="fa-solid fa-trash"></i></button>` : ''}
-                    </div>
-                `;
-                listEl.appendChild(item);
-            });
-
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-
-        function closeRosterModal() {
-            document.getElementById('roster-modal').classList.remove('flex');
-            document.getElementById('roster-modal').classList.add('hidden');
-        }
-
-        function addNewMember() {
-            const newId = profiles.length > 0 ? Math.max(...profiles.map(p => p.id)) + 1 : 0;
-            const randomColor = COLOR_PALETTE[profiles.length % COLOR_PALETTE.length];
-            profiles.push({ id: newId, name: `Member ${profiles.length + 1}`, color: randomColor });
-            saveDataLocalAndCloud();
-            openRosterModal();
-            showToast("Added new member slot");
-        }
-
-        function removeMember(id) {
-            if (profiles.length <= 1) {
-                showToast("You must keep at least one member!");
-                return;
-            }
-            profiles = profiles.filter(p => p.id !== id);
-            if (activeUserId === id) {
-                activeUserId = profiles[0].id;
-            }
-            saveDataLocalAndCloud();
-            openRosterModal();
-            showToast("Removed member");
-        }
-
-        function switchActiveUser(id) {
-            activeUserId = id;
-            saveDataLocalAndCloud();
-            renderActiveUserHeader();
-            renderCalendar();
-            const prof = profiles.find(p => p.id === id);
-            showToast(`Switched active profile: ${prof ? prof.name : ''}`);
-        }
-
-        function saveCustomNames() {
-            profiles.forEach(profile => {
-                const inputEl = document.getElementById(`edit-name-${profile.id}`);
-                const colorEl = document.getElementById(`edit-color-${profile.id}`);
-                if (inputEl && inputEl.value.trim() !== '') {
-                    profile.name = inputEl.value.trim();
-                }
-                if (colorEl) {
-                    profile.color = colorEl.value;
-                }
-            });
-            saveDataLocalAndCloud();
-            renderActiveUserHeader();
-            renderCalendar();
-            closeRosterModal();
-            showToast("Saved roster to cloud realm!");
-        }
-
-        function setMode(mode) {
-            viewMode = mode;
-            saveDataLocalAndCloud();
-            updateViewModeUI();
-            renderCalendar();
-            showToast(`Switched to ${mode === 'individual' ? 'My' : 'Group'} View`);
-        }
-
-        function updateViewModeUI() {
-            const btnInd = document.getElementById('mode-individual');
-            const btnCom = document.getElementById('mode-combined');
-
-            if (viewMode === 'individual') {
-                btnInd.className = "py-1.5 rounded-xl text-xs font-semibold bg-cyan-500 text-black shadow-lg shadow-cyan-500/20 transition-all flex items-center justify-center gap-1.5";
-                btnCom.className = "py-1.5 rounded-xl text-xs font-semibold glass-card text-slate-300 hover:text-white transition-all flex items-center justify-center gap-1.5";
+        function setSyncStatus(connected, text) {
+            const indicator = document.getElementById('sync-indicator');
+            const label = document.getElementById('sync-text');
+            if (connected) {
+                indicator.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
             } else {
-                btnCom.className = "py-1.5 rounded-xl text-xs font-semibold bg-purple-600 text-white shadow-lg shadow-purple-600/20 transition-all flex items-center justify-center gap-1.5";
-                btnInd.className = "py-1.5 rounded-xl text-xs font-semibold glass-card text-slate-300 hover:text-white transition-all flex items-center justify-center gap-1.5";
+                indicator.className = "w-2 h-2 rounded-full bg-amber-500";
+            }
+            label.innerText = text;
+        }
+
+        function saveDataToCloud() {
+            localStorage.setItem('nexus_members', JSON.stringify(squadMembers));
+            localStorage.setItem(`nexus_avail_${currentRealm}`, JSON.stringify(availabilityData));
+            
+            if (isFirebaseConnected && db) {
+                db.collection('realms').doc(currentRealm).set({
+                    members: squadMembers,
+                    availability: availabilityData
+                }, { merge: true }).catch(err => console.error("Cloud save failed:", err));
             }
         }
 
-        function changeMonth(direction) {
-            currentDate.setMonth(currentDate.getMonth() + direction);
+        function renderAll() {
+            document.getElementById('member-count').innerText = squadMembers.length;
+            renderLegend();
             renderCalendar();
         }
 
-        function goToCurrentMonth() {
-            currentDate = new Date();
-            renderCalendar();
-            showToast("Navigated to current month");
-        }
-
-        function getMonthKey(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            return `${year}-${month}`;
+        function renderLegend() {
+            const container = document.getElementById('roster-legend-list');
+            container.innerHTML = squadMembers.map(m => `
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-cardbg border border-bordercolor">
+                    <div class="flex items-center gap-3">
+                        <span class="w-3.5 h-3.5 rounded-full shadow-md" style="background-color: ${m.color}; box-shadow: 0 0 10px ${m.color}88;"></span>
+                        <span class="font-medium text-sm text-gray-200">${escapeHtml(m.name)}</span>
+                    </div>
+                </div>
+            `).join('');
         }
 
         function renderCalendar() {
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-
-            document.getElementById('calendar-month-year').innerText = `${monthNames[month]} ${year}`;
-
             const grid = document.getElementById('calendar-grid');
+            document.getElementById('current-month-year').innerText = `${monthNames[currentMonth]} ${currentYear}`;
+            
             grid.innerHTML = '';
 
-            const firstDayIndex = new Date(year, month, 1).getDay();
-            const totalDays = new Date(year, month + 1, 0).getDate();
-            const monthKey = getMonthKey(currentDate);
+            const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+            const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const prevTotalDays = new Date(currentYear, currentMonth, 0).getDate();
 
-            if (!availabilityData[monthKey]) {
-                availabilityData[monthKey] = {};
-            }
-            const monthData = availabilityData[monthKey];
-
-            for (let i = 0; i < firstDayIndex; i++) {
-                const emptyCell = document.createElement('div');
-                emptyCell.className = "glass-card rounded-xl opacity-10 pointer-events-none h-16 sm:h-20";
-                grid.appendChild(emptyCell);
+            // Previous month padding days
+            for (let i = firstDayIndex - 1; i >= 0; i--) {
+                const dayNum = prevTotalDays - i;
+                grid.innerHTML += `<div class="min-h-[110px] p-2 bg-[#090a10]/40 opacity-30 text-gray-600 text-xs font-medium select-none">${dayNum}</div>`;
             }
 
+            // Current month active days
             for (let day = 1; day <= totalDays; day++) {
-                const dayStr = String(day).padStart(2, '0');
-                const dateStr = `${monthKey}-${dayStr}`;
+                const mStr = String(currentMonth + 1).padStart(2, '0');
+                const dStr = String(day).padStart(2, '0');
+                const dateKey = `${currentYear}-${mStr}-${dStr}`;
                 
-                if (!monthData[dateStr]) {
-                    monthData[dateStr] = { available: [], numbers: {} };
-                }
-                const dayRecord = monthData[dateStr];
-                const dayAgents = dayRecord.available || [];
+                const dayAvail = availabilityData[dateKey] || {};
 
-                const cell = document.createElement('div');
-                cell.className = "glass-card rounded-xl p-1.5 flex flex-col justify-between cursor-pointer transition-all hover:border-cyan-500/50 relative h-16 sm:h-20 overflow-hidden";
-                
-                const isUserFree = dayAgents.includes(activeUserId);
-                const userNumber = dayRecord.numbers[activeUserId];
-
-                if (viewMode === 'individual' && isUserFree) {
-                    cell.classList.add('border-cyan-500/80', 'bg-cyan-950/30');
-                } else if (viewMode === 'combined' && dayAgents.length > 0) {
-                    cell.classList.add('border-purple-500/60', 'bg-purple-950/20');
-                }
-
-                let middleHtml = '';
-                if (viewMode === 'combined' && dayAgents.length > 0) {
-                    middleHtml = `<div class="flex items-center gap-1 overflow-x-hidden flex-wrap my-0.5">`;
-                    dayAgents.forEach(id => {
-                        const prof = profiles.find(p => p.id === id);
-                        if (prof) {
-                            const numVal = dayRecord.numbers[id];
-                            middleHtml += `
-                                <div class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${prof.color}; box-shadow: 0 0 5px ${prof.color};" title="${prof.name}${numVal !== undefined ? ' ('+numVal+')' : ''}"></div>
-                            `;
-                        }
-                    });
-                    middleHtml += `</div>`;
-                } else if (viewMode === 'individual' && isUserFree) {
-                    middleHtml = `
-                        <div class="flex items-center gap-1 my-0.5">
-                            <span class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_#06b6d4]"></span>
-                            ${userNumber !== undefined && userNumber !== '' ? `<span class="text-[9px] font-mono text-cyan-300 bg-cyan-500/10 px-1 rounded">${userNumber}</span>` : ''}
+                let dotsHtml = '';
+                squadMembers.forEach(m => {
+                    const status = dayAvail[m.id] || { available: false, val: '' };
+                    const isActive = status.available;
+                    const valText = status.val !== undefined && status.val !== '' ? status.val : '';
+                    
+                    dotsHtml += `
+                        <div class="flex items-center justify-between px-1.5 py-0.5 rounded text-[11px] hover:bg-gray-800/60 transition group cursor-pointer"
+                             onclick="toggleAvailability('${dateKey}', '${m.id}')" title="${m.name}">
+                            <div class="flex items-center gap-1.5 truncate">
+                                <span class="w-2.5 h-2.5 rounded-full transition transform group-hover:scale-125 flex-shrink-0" 
+                                      style="background-color: ${isActive ? m.color : '#222638'}; ${isActive ? `box-shadow: 0 0 8px ${m.color};` : ''}"></span>
+                                <span class="truncate text-gray-300 group-hover:text-white ${isActive ? 'font-semibold' : 'opacity-60'}">${escapeHtml(m.name)}</span>
+                            </div>
+                            <input type="number" value="${valText}" onclick="event.stopPropagation()" onchange="updateMemberValue('${dateKey}', '${m.id}', this.value)"
+                                   class="w-8 bg-cardbg border border-bordercolor rounded px-1 text-center text-xs text-white focus:outline-none focus:border-indigo-500" placeholder="-">
                         </div>
                     `;
-                }
+                });
 
-                cell.innerHTML = `
-                    <div class="flex items-center justify-between w-full">
-                        <span class="orbitron text-[11px] font-bold ${isUserFree && viewMode === 'individual' ? 'text-cyan-300' : 'text-slate-300'}">${day}</span>
-                        ${viewMode === 'combined' && dayAgents.length > 0 ? `<span class="text-[8px] font-mono text-purple-300">${dayAgents.length}</span>` : ''}
-                    </div>
-                    <div class="flex-1 flex flex-col justify-center">
-                        ${middleHtml}
-                    </div>
-                    <div class="text-[8px] font-mono text-slate-500 flex items-center justify-between">
-                        <span>${dayAgents.length}/${profiles.length}</span>
+                grid.innerHTML += `
+                    <div class="min-h-[130px] p-2 flex flex-col justify-between bg-cardbg/30 hover:bg-cardbg/60 transition">
+                        <div class="flex items-center justify-between pb-1.5 border-b border-bordercolor/50">
+                            <span class="font-bold text-xs text-gray-300">${day}</span>
+                        </div>
+                        <div class="space-y-1 my-1 overflow-y-auto max-h-[110px] custom-scrollbar pr-0.5">
+                            ${dotsHtml}
+                        </div>
                     </div>
                 `;
-
-                cell.onclick = () => openDayModal(dateStr, day, monthNames[month], year);
-                grid.appendChild(cell);
             }
-
-            let totalMonthCount = 0;
-            Object.keys(monthData).forEach(dKey => {
-                if (monthData[dKey] && Array.isArray(monthData[dKey].available)) {
-                    totalMonthCount += monthData[dKey].available.length;
-                }
-            });
-            document.getElementById('month-free-count').innerText = totalMonthCount;
         }
 
-        function openDayModal(dateStr, dayNum, monthName, yearNum) {
-            selectedModalDateStr = dateStr;
-            const modal = document.getElementById('day-modal');
-            const titleEl = document.getElementById('modal-date-title');
-            const listEl = document.getElementById('modal-agents-list');
-            const toggleBtn = document.getElementById('modal-toggle-btn');
-            const numberInput = document.getElementById('modal-custom-number');
-
-            if (dayNum && monthName && yearNum) {
-                titleEl.innerText = `${monthName} ${dayNum}, ${yearNum}`;
+        function toggleAvailability(dateKey, memberId) {
+            if (!availabilityData[dateKey]) availabilityData[dateKey] = {};
+            if (!availabilityData[dateKey][memberId]) {
+                availabilityData[dateKey][memberId] = { available: true, val: '' };
             } else {
-                const parts = dateStr.split('-');
-                titleEl.innerText = `${monthNames[parseInt(parts[1])-1]} ${parseInt(parts[2])}, ${parts[0]}`;
+                availabilityData[dateKey][memberId].available = !availabilityData[dateKey][memberId].available;
             }
-
-            const monthKey = dateStr.substring(0, 7);
-            const dayRecord = (availabilityData[monthKey] && availabilityData[monthKey][dateStr]) || { available: [], numbers: {} };
-            const dayAgents = dayRecord.available || [];
-
-            numberInput.value = (dayRecord.numbers && dayRecord.numbers[activeUserId] !== undefined) ? dayRecord.numbers[activeUserId] : '';
-
-            listEl.innerHTML = '';
-            if (dayAgents.length === 0) {
-                listEl.innerHTML = `<p class="text-[10px] text-slate-500 font-mono italic py-1">No members available in realm yet.</p>`;
-            } else {
-                dayAgents.forEach(id => {
-                    const prof = profiles.find(p => p.id === id);
-                    const numVal = dayRecord.numbers ? dayRecord.numbers[id] : undefined;
-                    if (prof) {
-                        const item = document.createElement('div');
-                        item.className = "glass-card p-2 rounded-xl flex items-center justify-between border border-slate-800 text-xs";
-                        item.innerHTML = `
-                            <div class="flex items-center gap-2">
-                                <div class="w-2.5 h-2.5 rounded-full" style="background-color: ${prof.color}; box-shadow: 0 0 6px ${prof.color};"></div>
-                                <span class="font-semibold text-slate-200">${prof.name}</span>
-                            </div>
-                            <div class="flex items-center gap-1.5">
-                                ${numVal !== undefined && numVal !== '' ? `<span class="text-[9px] font-mono text-cyan-300 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/30">Val: ${numVal}</span>` : ''}
-                                <span class="text-[9px] font-mono text-cyan-400">FREE</span>
-                            </div>
-                        `;
-                        listEl.appendChild(item);
-                    }
-                });
-            }
-
-            const isUserFree = dayAgents.includes(activeUserId);
-            toggleBtn.innerHTML = isUserFree ? 
-                `<i class="fa-solid fa-circle text-[8px] text-red-400"></i> Mark Myself BUSY` : 
-                `<i class="fa-solid fa-circle text-[8px] text-cyan-400"></i> Mark Myself AVAILABLE`;
-            
-            toggleBtn.className = isUserFree ? 
-                "w-full py-3 rounded-xl text-xs font-bold bg-red-500/20 text-red-300 border border-red-500/40 transition-all flex items-center justify-center gap-2" : 
-                "w-full py-3 rounded-xl text-xs font-bold bg-cyan-500 text-black shadow-lg shadow-cyan-500/20 transition-all flex items-center justify-center gap-2";
-
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-
-        function closeDayModal() {
-            document.getElementById('day-modal').classList.remove('flex');
-            document.getElementById('day-modal').classList.add('hidden');
-        }
-
-        function toggleActiveUserForModalDate() {
-            if (!selectedModalDateStr) return;
-            const monthKey = selectedModalDateStr.substring(0, 7);
-            if (!availabilityData[monthKey]) availabilityData[monthKey] = {};
-            if (!availabilityData[monthKey][selectedModalDateStr]) availabilityData[monthKey][selectedModalDateStr] = { available: [], numbers: {} };
-
-            const dayRecord = availabilityData[monthKey][selectedModalDateStr];
-            const idx = dayRecord.available.indexOf(activeUserId);
-
-            if (idx > -1) {
-                dayRecord.available.splice(idx, 1);
-                delete dayRecord.numbers[activeUserId];
-                showToast("Marked busy");
-            } else {
-                dayRecord.available.push(activeUserId);
-                showToast("Marked available");
-            }
-
-            saveDataLocalAndCloud();
-            renderCalendar();
-            openDayModal(selectedModalDateStr);
-        }
-
-        function saveModalCustomNumber(val) {
-            if (!selectedModalDateStr) return;
-            const monthKey = selectedModalDateStr.substring(0, 7);
-            if (!availabilityData[monthKey]) availabilityData[monthKey] = {};
-            if (!availabilityData[monthKey][selectedModalDateStr]) availabilityData[monthKey][selectedModalDateStr] = { available: [], numbers: {} };
-
-            const dayRecord = availabilityData[monthKey][selectedModalDateStr];
-            if (val.trim() === '') {
-                delete dayRecord.numbers[activeUserId];
-            } else {
-                dayRecord.numbers[activeUserId] = val;
-                if (!dayRecord.available.includes(activeUserId)) {
-                    dayRecord.available.push(activeUserId);
-                }
-            }
-
-            saveDataLocalAndCloud();
+            saveDataToCloud();
             renderCalendar();
         }
 
-        function openExportModal() {
-            const modal = document.getElementById('export-modal');
-            const textArea = document.getElementById('export-text-area');
-            
-            let summary = `=== REALM SYNC REPORT: ${realmName} (${realmCode}) ===\n`;
-            Object.keys(availabilityData).forEach(mKey => {
-                summary += `[MONTH: ${mKey}]\n`;
-                const mData = availabilityData[mKey];
-                Object.keys(mData).forEach(dKey => {
-                    const dayRec = mData[dKey];
-                    const agents = dayRec.available || [];
-                    if (agents.length > 0) {
-                        const names = agents.map(id => {
-                            const prof = profiles.find(p => p.id === id);
-                            const n = prof ? prof.name : `Member ${id}`;
-                            const num = dayRec.numbers?.[id];
-                            return num !== undefined && num !== '' ? `${n}(${num})` : n;
-                        }).join(', ');
-                        summary += `  ${dKey} (${agents.length}/${profiles.length}): ${names}\n`;
-                    }
-                });
-            });
-
-            textArea.value = summary;
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+        function updateMemberValue(dateKey, memberId, val) {
+            if (!availabilityData[dateKey]) availabilityData[dateKey] = {};
+            if (!availabilityData[dateKey][memberId]) {
+                availabilityData[dateKey][memberId] = { available: true, val: val };
+            } else {
+                availabilityData[dateKey][memberId].val = val;
+            }
+            saveDataToCloud();
         }
 
-        function closeExportModal() {
-            document.getElementById('export-modal').classList.remove('flex');
-            document.getElementById('export-modal').classList.add('hidden');
+        function changeMonth(dir) {
+            currentMonth += dir;
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            else if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            renderCalendar();
         }
 
-        function copyExportText() {
-            const textArea = document.getElementById('export-text-area');
-            textArea.select();
-            document.execCommand('copy');
-            showToast("Copied realm report to clipboard!");
-            closeExportModal();
+        // Roster Modal Functions
+        function openRosterModal() {
+            const list = document.getElementById('roster-edit-list');
+            list.innerHTML = squadMembers.map((m, idx) => `
+                <div class="flex items-center gap-3 p-2.5 rounded-xl bg-cardbg border border-bordercolor">
+                    <input type="color" value="${m.color}" onchange="updateMemberProp(${idx}, 'color', this.value)" class="w-8 h-8 rounded-lg bg-transparent border-0 cursor-pointer">
+                    <input type="text" value="${escapeHtml(m.name)}" oninput="updateMemberProp(${idx}, 'name', this.value)" class="flex-1 bg-cardbg border border-bordercolor rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+                    <button onclick="removeMember(${idx})" class="p-2 text-gray-500 hover:text-rose-400 transition"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+            `).join('');
+            document.getElementById('roster-modal').classList.remove('hidden');
         }
 
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-msg').innerText = msg;
-            toast.classList.remove('-translate-y-20', 'opacity-0');
-            setTimeout(() => {
-                toast.classList.add('-translate-y-20', 'opacity-0');
-            }, 2500);
+        function closeRosterModal() {
+            document.getElementById('roster-modal').classList.add('hidden');
+            renderAll();
+        }
+
+        function updateMemberProp(index, prop, val) {
+            squadMembers[index][prop] = val;
+        }
+
+        function addMember() {
+            const id = 'm_' + Math.random().toString(36.substring(2, 9));
+            const colors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f43f5e', '#84cc16', '#14b8a6', '#d946ef'];
+            const color = colors[squadMembers.length % colors.length];
+            squadMembers.push({ id, name: `Member ${squadMembers.length + 1}`, color });
+            openRosterModal();
+        }
+
+        function removeMember(index) {
+            if (squadMembers.length <= 1) {
+                alert("You must keep at least 1 squad member.");
+                return;
+            }
+            squadMembers.splice(index, 1);
+            openRosterModal();
+        }
+
+        function saveRosterChanges() {
+            saveDataToCloud();
+            closeRosterModal();
+        }
+
+        // Realm Modal Functions
+        function openRealmModal() {
+            document.getElementById('realm-input').value = currentRealm;
+            updateShareLink();
+            document.getElementById('realm-modal').classList.remove('hidden');
+        }
+
+        function closeRealmModal() {
+            document.getElementById('realm-modal').classList.add('hidden');
+        }
+
+        function updateShareLink() {
+            const code = document.getElementById('realm-input').value.trim() || 'default-squad';
+            const link = `${window.location.origin}${window.location.pathname}?realm=${encodeURIComponent(code)}`;
+            document.getElementById('realm-share-link').value = link;
+        }
+
+        function copyRealmLink() {
+            const input = document.getElementById('realm-share-link');
+            input.select();
+            navigator.clipboard.writeText(input.value);
+            alert("Realm invite link copied to clipboard!");
+        }
+
+        function switchRealm() {
+            const val = document.getElementById('realm-input').value.trim();
+            if (!val) { alert("Please enter a valid Realm Code."); return; }
+            currentRealm = val;
+            localStorage.setItem('nexus_realm', currentRealm);
+            document.getElementById('realm-display-badge').innerText = `Realm: ${currentRealm}`;
+            closeRealmModal();
+            setupRealtimeSync();
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // Check URL parameters for auto realm join
+        const urlParams = new URLSearchParams(window.location.search);
+        const realmParam = urlParams.get('realm');
+        if (realmParam) {
+            currentRealm = realmParam;
+            localStorage.setItem('nexus_realm', currentRealm);
         }
     </script>
 </body>
