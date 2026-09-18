@@ -413,8 +413,15 @@
 
         window.addEventListener('firebase-loaded', async () => {
             const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, getFirestore } = window.firebaseModules;
-            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-            
+const firebaseConfig = {
+                apiKey: "AIzaSyBzEXsM03_ta8F5z_FLN7hPoeC42hWo6qQ",
+                authDomain: "syncus-74962.firebaseapp.com",
+                projectId: "syncus-74962",
+                storageBucket: "syncus-74962.firebasestorage.app",
+                messagingSenderId: "19847420761",
+                appId: "1:19847420761:web:abcdadf29a56e9b16bca48",
+                measurementId: "G-RW3GP37QZH"
+            };            
             if (Object.keys(firebaseConfig).length > 0) {
                 try {
                     const app = initializeApp(firebaseConfig);
