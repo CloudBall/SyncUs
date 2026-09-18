@@ -1,0 +1,17 @@
+{
+  "name": "NexusSync",
+  "short_name": "NexusSync",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0b10",
+  "theme_color": "#0a0b10",
+  "description": "Hi-Tech real-time squad availability calendar with neon color profiles.",
+  "icons": [
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
